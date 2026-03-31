@@ -2,54 +2,55 @@ import streamlit as st
 import pandas as pd
 
 # 1. 網頁基本設定
-st.set_page_config(page_title="車輛資訊查詢系統", layout="centered")
-st.title("🚗 車輛型號與地區篩選器")
-st.write("目前表格的欄位名稱為：", df.columns.tolist())
+st.set_page_config(page_title="Quincy Limo Prices", layout="centered")
+st.title("🚗 Quincy Limo 價格查詢系統")
 
 # 2. 你的 Google Sheets CSV 連結
 sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTUroRgmX-R1wQx5ndR5B8plTm7uajQg4OdpdxV8UK21exlpKhmix-wjLKGgG2HrLqWLhHQpQn-Gmfv/pub?gid=0&single=true&output=csv"
 
-@st.cache_data(ttl=600)  # 每 10 分鐘自動更新一次資料
+@st.cache_data(ttl=60)
 def load_data():
-    # 讀取資料並自動去除欄位名稱與內容的空格
+    # 嘗試讀取資料
     data = pd.read_csv(sheet_url)
+    # 強制清理欄位名稱的空格
     data.columns = data.columns.str.strip()
     return data
 
+# --- 執行邏輯 ---
+
 try:
+    # 呼叫函式並賦值給 df
     df = load_data()
 
-    # 3. 建立篩選介面
-    st.info("請從下方選單選擇條件以獲取答案：")
-    
-    col1, col2 = st.columns(2)
+    # 除錯資訊：顯示目前抓取到的標題
+    # st.write("偵測到的欄位標題：", df.columns.tolist())
 
-    with col1:
-        # 取得所有不重複的車型
-        models = sorted(df['Model'].dropna().unique())
-        selected_model = st.selectbox("1. 選擇車型 (Model)", models)
+    # 3. 檢查關鍵欄位是否存在
+    required_columns = ['Model', 'Region', 'Result']
+    missing_columns = [col for col in required_columns if col not in df.columns]
 
-    with col2:
-        # 根據選擇的車型，過濾出該車型有的地區
-        available_regions = sorted(df[df['Model'] == selected_model]['Region'].dropna().unique())
-        selected_region = st.selectbox("2. 選擇地區 (Region)", available_regions)
-
-    # 4. 顯示篩選結果
-    st.divider()
-    
-    # 進行資料比對
-    final_result = df[(df['Model'] == selected_model) & (df['Region'] == selected_region)]
-
-    if not final_result.empty:
-        st.subheader("📍 查詢結果：")
-        # 顯示 Result 欄位的內容
-        answer = final_result.iloc[0]['Result']
-        st.success(f"**答案：** {answer}")
+    if missing_columns:
+        st.error(f"Excel 找不到以下欄位：{missing_columns}")
+        st.write("請檢查 Excel 第一列是否精確包含：Model, Region, Result")
     else:
-        st.warning("查無此組合的相關資料。")
+        # 4. 建立篩選器
+        col1, col2 = st.columns(2)
+        with col1:
+            models = sorted(df['Model'].dropna().unique())
+            selected_model = st.selectbox("請選擇車型：", models)
+        with col2:
+            regions = sorted(df[df['Model'] == selected_model]['Region'].dropna().unique())
+            selected_region = st.selectbox("請選擇地區：", regions)
+
+        st.divider()
+        
+        # 5. 顯示結果
+        final_result = df[(df['Model'] == selected_model) & (df['Region'] == selected_region)]
+        if not final_result.empty:
+            st.success(f"**價格/資訊：** {final_result.iloc[0]['Result']}")
+        else:
+            st.warning("查無此組合資料。")
 
 except Exception as e:
-    st.error("讀取雲端資料庫時發生錯誤。")
-    st.write("錯誤訊息：", e)
-    st.write("請確認您的 Google Sheet 第一列標題是否為：Model, Region, Result")
-
+    st.error("系統無法連結到資料庫。")
+    st.exception(e) # 這會顯示詳細的錯誤追蹤
