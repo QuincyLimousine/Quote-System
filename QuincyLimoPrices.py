@@ -7,7 +7,7 @@ st.title("🚗 車輛型號與地區篩選系統")
 
 # 2. 讀取資料庫 (這裡放入你的 Google Sheet CSV 連結)
 # 格式範例: https://docs.google.com/spreadsheets/d/ID/export?format=csv
-sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTUroRgmX-R1wQx5ndR5B8plTm7uajQg4OdpdxV8UK21exlpKhmix-wjLKGgG2HrLqWLhHQpQn-Gmfv/pub?output=csv"
+sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTUroRgmX-R1wQx5ndR5B8plTm7uajQg4OdpdxV8UK21exlpKhmix-wjLKGgG2HrLqWLhHQpQn-Gmfv/pub?gid=0&single=true&output=csv"
 
 @st.cache_data
 def load_data():
