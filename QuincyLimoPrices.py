@@ -1,56 +1,59 @@
 import streamlit as st
 import pandas as pd
 
-# 1. 網頁基本設定
+# 1. Page Configuration
 st.set_page_config(page_title="Quincy Limo Prices", layout="centered")
-st.title("🚗 Quincy Limo 價格查詢系統")
+st.title("🚗 Quincy Limo Price Finder")
 
-# 2. 你的 Google Sheets CSV 連結
+# 2. Your Google Sheets CSV Link
 sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTUroRgmX-R1wQx5ndR5B8plTm7uajQg4OdpdxV8UK21exlpKhmix-wjLKGgG2HrLqWLhHQpQn-Gmfv/pub?gid=0&single=true&output=csv"
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=60) # Refreshes data every 60 seconds
 def load_data():
-    # 嘗試讀取資料
+    # Load data and strip extra spaces from headers and content
     data = pd.read_csv(sheet_url)
-    # 強制清理欄位名稱的空格
     data.columns = data.columns.str.strip()
     return data
 
-# --- 執行邏輯 ---
+# --- Main Logic ---
 
 try:
-    # 呼叫函式並賦值給 df
     df = load_data()
 
-    # 除錯資訊：顯示目前抓取到的標題
-    # st.write("偵測到的欄位標題：", df.columns.tolist())
-
-    # 3. 檢查關鍵欄位是否存在
+    # 3. Check for required headers
     required_columns = ['Model', 'Region', 'Result']
     missing_columns = [col for col in required_columns if col not in df.columns]
 
     if missing_columns:
-        st.error(f"Excel 找不到以下欄位：{missing_columns}")
-        st.write("請檢查 Excel 第一列是否精確包含：Model, Region, Result")
+        st.error(f"Error: Missing columns in Excel: {missing_columns}")
+        st.info("Please ensure your Google Sheet headers are exactly: **Model**, **Region**, and **Result**.")
     else:
-        # 4. 建立篩選器
+        # 4. Create Filters
+        st.write("Select your options below to see the price:")
+        
         col1, col2 = st.columns(2)
+        
         with col1:
             models = sorted(df['Model'].dropna().unique())
-            selected_model = st.selectbox("請選擇車型：", models)
+            selected_model = st.selectbox("1. Select Car Model:", models)
+
         with col2:
-            regions = sorted(df[df['Model'] == selected_model]['Region'].dropna().unique())
-            selected_region = st.selectbox("請選擇地區：", regions)
+            # Filter regions based on the selected model
+            available_regions = sorted(df[df['Model'] == selected_model]['Region'].dropna().unique())
+            selected_region = st.selectbox("2. Select Region:", available_regions)
 
         st.divider()
         
-        # 5. 顯示結果
+        # 5. Display Result
         final_result = df[(df['Model'] == selected_model) & (df['Region'] == selected_region)]
+
         if not final_result.empty:
-            st.success(f"**價格/資訊：** {final_result.iloc[0]['Result']}")
+            price_info = final_result.iloc[0]['Result']
+            st.subheader("📍 Quote Detail:")
+            st.success(f"**The rate is:** {price_info}")
         else:
-            st.warning("查無此組合資料。")
+            st.warning("No pricing found for this specific combination.")
 
 except Exception as e:
-    st.error("系統無法連結到資料庫。")
-    st.exception(e) # 這會顯示詳細的錯誤追蹤
+    st.error("System could not connect to the database.")
+    st.exception(e)
