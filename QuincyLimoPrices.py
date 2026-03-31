@@ -7,7 +7,7 @@ st.title("🚗 車輛型號與地區篩選系統")
 
 # 2. 讀取資料庫 (這裡放入你的 Google Sheet CSV 連結)
 # 格式範例: https://docs.google.com/spreadsheets/d/ID/export?format=csv
-sheet_url = "你的_GOOGLE_SHEET_CSV_連結"
+sheet_url = "https://docs.google.com/spreadsheets/d/12LWjYcEjLoTaqtsuqtVML2ZOomQ3pplVFr0bbSYfpQM/edit?usp=sharing"
 
 @st.cache_data
 def load_data():
