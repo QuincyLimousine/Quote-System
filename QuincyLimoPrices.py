@@ -4,7 +4,26 @@ from dateutil import parser
 from datetime import date
 
 # 1. 網頁基本設定
-st.set_page_config(page_title="Quincy Limo Prices", layout="centered")
+st.set_page_config(page_title="Quincy Limo Prices", layout="wide") # 改為 wide 模式讓排版更靈活
+
+# --- 左方側邊欄 (Sidebar) 放置 Logo ---
+with st.sidebar:
+    # 請將下方的 URL 替換為你公司的 Logo 圖片網址
+    # 如果圖片在 GitHub，請使用原始檔案 (Raw) 連結
+    logo_url = "https://your-company-logo-url.com/logo.png" 
+    
+    try:
+        st.image(logo_url, use_container_width=True)
+    except:
+        # 如果圖片連結失效，顯示文字替代
+        st.title("📂 Quincy Limo")
+    
+    st.divider()
+    st.markdown("### 聯絡我們 (Contact)")
+    st.write("📞 電話: +852 XXXX XXXX")
+    st.write("🌐 官網: www.quincylimo.com")
+
+# --- 主畫面內容 ---
 st.title("🚗 Quincy Limo 預約報價系統")
 
 # 2. 資料來源
@@ -27,18 +46,10 @@ else:
     # --- 第一步：預約時間與日期 ---
     st.subheader("📅 第一步：預約時間與日期")
     col_t1, col_t2 = st.columns(2)
-    
     with col_t1:
-        # 設定 min_value=date.today()，讓使用者無法選擇今天以前的日期
-        selected_date = st.date_input(
-            "預約上車日期 (Date):", 
-            value=date.today(),
-            min_value=date.today() 
-        )
-    
+        selected_date = st.date_input("預約上車日期 (Date):", value=date.today(), min_value=date.today())
     with col_t2:
         pickup_input = st.text_input("預約上車時間 (Pick-up Time):", placeholder="例如: 22:30")
-        
         night_fee = 0
         if pickup_input:
             try:
@@ -56,20 +67,16 @@ else:
     with col_s1:
         transfer_types = ["請選擇"] + sorted(df['Transfer Type'].dropna().unique().tolist())
         selected_type = st.selectbox("接送類型 (Transfer Type):", transfer_types)
-        
         regions = ["請選擇"] + sorted(df['Region'].dropna().unique().tolist())
         selected_region = st.selectbox("地區 (Region):", regions)
-
     with col_s2:
         models = ["請選擇"] + sorted(df['Model'].dropna().unique().tolist())
         selected_model = st.selectbox("車型 (Model):", models)
-
         if selected_region != "請選擇":
             filtered_districts = df[df['Region'] == selected_region]['District'].dropna().unique().tolist()
             districts = ["請選擇"] + sorted(filtered_districts)
         else:
             districts = ["請先選擇地區"]
-        
         selected_district = st.selectbox("區域 (District):", districts)
 
     st.divider()
@@ -81,16 +88,11 @@ else:
 
     st.divider()
 
-    # --- 最終報價顯示邏輯 ---
+    # --- 最終報價顯示 ---
     required_fields = [selected_type, selected_model, selected_region, selected_district]
-    
     if "請選擇" not in required_fields and "請先選擇地區" not in required_fields:
-        final_result = df[
-            (df['Transfer Type'] == selected_type) & 
-            (df['Model'] == selected_model) & 
-            (df['Region'] == selected_region) & 
-            (df['District'] == selected_district)
-        ]
+        final_result = df[(df['Transfer Type'] == selected_type) & (df['Model'] == selected_model) & 
+                          (df['Region'] == selected_region) & (df['District'] == selected_district)]
 
         if not final_result.empty:
             base_price_raw = final_result.iloc[0]['Result']
@@ -102,21 +104,14 @@ else:
             total_price = base_price + seat_fee + night_fee
             
             st.subheader("📍 預約彙總與報價")
-            
             summary_data = {
                 "項目 (Item)": ["日期", "時間", "行程", "安全座椅", "基本車資", "其他費用"],
-                "內容 (Details)": [
-                    selected_date.strftime("%Y-%m-%d"),
-                    pickup_input if pickup_input else "未輸入",
-                    f"{selected_type} ({selected_region}-{selected_district})",
-                    f"{seat_count} 張",
-                    f"${base_price}",
-                    f"${seat_fee + night_fee}"
-                ]
+                "內容 (Details)": [selected_date.strftime("%Y-%m-%d"), pickup_input if pickup_input else "未輸入",
+                                f"{selected_type} ({selected_region}-{selected_district})", f"{seat_count} 張",
+                                f"${base_price}", f"${seat_fee + night_fee}"]
             }
             st.table(pd.DataFrame(summary_data))
             st.metric(label="預計總費用 (Total Estimated Price)", value=f"HKD ${total_price}")
-            
             if night_fee > 0:
                 st.warning("🌙 已計入夜間服務費 $100 (22:00-07:00)")
         else:
