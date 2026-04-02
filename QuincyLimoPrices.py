@@ -119,9 +119,10 @@ if "請選擇" not in required_fields and "請先選擇地區" not in required_f
         # --- 判斷行程顯示文字 ---
         if selected_type == "Airport Transfer(Arrival)":
             route_display = f"HKIA → {selected_district}"
-        if selected_type == "Airport Transfer(Departure)":
+        elif selected_type == "Airport Transfer(Departure)":
             route_display = f"{selected_district} → HKIA"
         else:
+            # 處理 Point to Point 或其他類型的顯示
             route_display = f"{selected_type} ({selected_region}-{selected_district})"
         
         st.subheader("📍 預約彙總與報價")
