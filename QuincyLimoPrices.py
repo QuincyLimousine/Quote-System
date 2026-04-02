@@ -13,7 +13,7 @@ st.markdown(
     f"""
     <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
         <img src="{logo_url}" style="height: 40px;">
-        <h1 style="margin: 0; font-size: 2rem;">Quincy Limo 預約報價系統</h1>
+        <h1 style="margin: 0; font-size: 2rem;">Quincy Limousine 報價系統</h1>
     </div>
     """,
     unsafe_allow_html=True
@@ -37,12 +37,12 @@ if df.empty:
     st.error("無法載入資料庫，請檢查 Google Sheet 設定。")
 else:
     # --- 1. 預約時間與日期 ---
-    st.subheader("1. 預約時間與日期")
+    st.subheader("1. 使用時間與日期")
     col_t1, col_t2 = st.columns(2)
     with col_t1:
-        selected_date = st.date_input("預約上車日期 (Date):", value=date.today(), min_value=date.today())
+        selected_date = st.date_input("使用日期 (Date):", value=date.today(), min_value=date.today())
     with col_t2:
-        pickup_input = st.text_input("預約上車時間 (Pick-up Time):", placeholder="例如: 22:30")
+        pickup_input = st.text_input("使用時間 (Pick-up Time):", placeholder="例如: 22:30")
         night_fee = 0
         if pickup_input:
             try:
