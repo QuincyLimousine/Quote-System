@@ -57,16 +57,7 @@ else:
     # --- 第二步：接送詳情 ---
     st.subheader("2. 接送詳情")
     col_s1, col_s2 = st.columns(2)
-    # --- 【新增：動態車型圖片預覽】 ---
-    # 設定車型與圖片連結的對應關係 (請確保 Key 名稱與 Google Sheet 內的車型名稱完全一致)
-    model_images = {
-        "Comfort 5-Seater": "https://raw.githubusercontent.com/QuincyLimousine/Quincy-Limousine-Prices/main/Vehicle%20Type/Compact%205-Seater.png",
-        "Deluxe 5-Seater": "https://raw.githubusercontent.com/QuincyLimousine/Quincy-Limousine-Prices/main/Vehicle%20Type/Deluxe%205-Seater.png",
-        "Deluxe 7-Seater": "https://raw.githubusercontent.com/QuincyLimousine/Quincy-Limousine-Prices/main/Vehicle%20Type/Deluxe%207-Seater.png",
-        "Premium 7-Seater": "https://raw.githubusercontent.com/QuincyLimousine/Quincy-Limousine-Prices/main/Vehicle%20Type/Premium%207-Seater.png"
-    }
-    if selected_model in model_images:
-        st.image(model_images[selected_model], use_container_width=True)
+    
         
     with col_s1:
         transfer_types = ["請選擇"] + sorted(df['Transfer Type'].dropna().unique().tolist())
@@ -82,7 +73,16 @@ else:
         else:
             selected_district = st.selectbox("區域 (District):", ["請先選擇地區"])
 
-    
+    # --- 【新增：動態車型圖片預覽】 ---
+    # 設定車型與圖片連結的對應關係 (請確保 Key 名稱與 Google Sheet 內的車型名稱完全一致)
+    model_images = {
+        "Comfort 5-Seater": "https://raw.githubusercontent.com/QuincyLimousine/Quincy-Limousine-Prices/main/Vehicle%20Type/Compact%205-Seater.png",
+        "Deluxe 5-Seater": "https://raw.githubusercontent.com/QuincyLimousine/Quincy-Limousine-Prices/main/Vehicle%20Type/Deluxe%205-Seater.png",
+        "Deluxe 7-Seater": "https://raw.githubusercontent.com/QuincyLimousine/Quincy-Limousine-Prices/main/Vehicle%20Type/Deluxe%207-Seater.png",
+        "Premium 7-Seater": "https://raw.githubusercontent.com/QuincyLimousine/Quincy-Limousine-Prices/main/Vehicle%20Type/Premium%207-Seater.png"
+    }
+    if selected_model in model_images:
+        st.image(model_images[selected_model], use_container_width=True)
 
     st.divider()
 
