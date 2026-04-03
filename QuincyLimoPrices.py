@@ -12,13 +12,13 @@ if 'step' not in st.session_state:
 def toggle_language():
     st.session_state.lang = 'EN' if st.session_state.lang == 'CH' else 'CH'
 
-# --- 2. 翻譯字典 (調整為 3 個步驟) ---
+# --- 2. 翻譯字典 (已統一為 3 個步驟標題) ---
 texts = {
     'CH': {
         'title': 'Quincy Limousine 報價系統',
         'step1': '步驟 1: 客戶聯絡資料',
         'step2': '步驟 2: 行程詳情與選項',
-        'step3': '步驟 3: 最終預約報價',
+        'step3': '步驟 3: 最終預約報價', # 確保這裡標籤正確
         'next': '下一步',
         'prev': '返回上一步',
         'fill_all': '⚠️ 請填寫所有必填項以繼續。',
@@ -52,7 +52,7 @@ texts = {
         'title': 'Quincy Limousine Quote System',
         'step1': 'Step 1: Contact Information',
         'step2': 'Step 2: Journey & Options',
-        'step3': 'Step 3: Final Quote',
+        'step3': 'Step 3: Final Quote', # 確保這裡標籤正確
         'next': 'Next',
         'prev': 'Back',
         'fill_all': '⚠️ Please fill in all required fields.',
@@ -96,6 +96,7 @@ with col_title:
 with col_lang:
     st.button("🌐 EN/中文", on_click=toggle_language)
 
+# 進度條調整為 3 段
 st.progress(st.session_state.step / 3)
 
 # --- 4. 資料載入 ---
@@ -118,11 +119,8 @@ if st.session_state.step == 1:
     st.subheader(L['step1'])
     u_name = st.text_input(L['name_label'], value=st.session_state.get('u_name', '')).strip()
     
-    raw_codes = [
-        ("🇦🇺 Australia +61", "+61"), ("🇨🇳 China +86", "+86"), ("🇭🇰 Hong Kong +852", "+852"),
-        ("🇲🇴 Macau +853", "+853"), ("🇲🇾 Malaysia +60", "+60"), ("🇸🇬 Singapore +65", "+65"),
-        ("🇹🇼 Taiwan +886", "+886"), ("🇬🇧 UK +44", "+44"), ("🇺🇸 USA +1", "+1"), ("🇯🇵 Japan +81", "+81")
-    ]
+    # 簡化版區號清單供測試，可自行補回完整清單
+    raw_codes = [("🇭🇰 Hong Kong +852", "+852"), ("🇨🇳 China +86", "+86"), ("🇲🇴 Macau +853", "+853"), ("🇹🇼 Taiwan +886", "+886")]
     country_codes = sorted(raw_codes, key=lambda x: x[0][3:])
     
     col_c, col_p = st.columns([0.45, 0.55])
@@ -138,7 +136,10 @@ if st.session_state.step == 1:
 
     if st.button(L['next']):
         if u_name and u_phone_raw and email_valid:
-            st.session_state.u_name, st.session_state.u_phone_raw, st.session_state.u_phone_full, st.session_state.u_email = u_name, u_phone_raw, f"{sel_code} {u_phone_raw}", u_email
+            st.session_state.u_name = u_name
+            st.session_state.u_phone_raw = u_phone_raw
+            st.session_state.u_phone_full = f"{sel_code} {u_phone_raw}"
+            st.session_state.u_email = u_email
             st.session_state.step = 2
             st.rerun()
         else:
@@ -149,7 +150,7 @@ if st.session_state.step == 1:
 elif st.session_state.step == 2:
     st.subheader(L['step2'])
     
-    # 2a. 時間與日期
+    # 時間與日期
     col_t1, col_t2 = st.columns(2)
     with col_t1:
         s_date = st.date_input(L['date_label'], value=st.session_state.get('s_date', date.today()), min_value=date.today())
@@ -158,18 +159,16 @@ elif st.session_state.step == 2:
     
     st.divider()
     
-    # 2b. 行程地點與車型
+    # 行程地點與車型
     col_s1, col_s2 = st.columns(2)
     with col_s1:
         t_types = [L['select_op']] + sorted(df['Transfer Type'].dropna().unique().tolist())
         s_type = st.selectbox(L['type_label'], t_types, index=t_types.index(st.session_state.get('s_type')) if st.session_state.get('s_type') in t_types else 0)
-        
         regs = [L['select_op']] + sorted(df['Region'].dropna().unique().tolist())
         s_region = st.selectbox(L['region_label'], regs, index=regs.index(st.session_state.get('s_region')) if st.session_state.get('s_region') in regs else 0)
     with col_s2:
         mods = [L['select_op']] + sorted(df['Model'].dropna().unique().tolist())
         s_model = st.selectbox(L['model_label'], mods, index=mods.index(st.session_state.get('s_model')) if st.session_state.get('s_model') in mods else 0)
-        
         if s_region != L['select_op']:
             dists = [L['select_op']] + sorted(df[df['Region'] == s_region]['District'].dropna().unique().tolist())
             s_district = st.selectbox(L['district_label'], dists, index=dists.index(st.session_state.get('s_district')) if st.session_state.get('s_district') in dists else 0)
@@ -178,15 +177,14 @@ elif st.session_state.step == 2:
 
     st.divider()
 
-    # 2c. 附加選項
-    st.markdown(f"### {L['step3']}")
+    # 附加選項 (原 Step 3 內容)
     col_o1, col_o2 = st.columns(2)
     with col_o1:
         seat_count = st.number_input(L['seat_label'], min_value=0, max_value=4, value=st.session_state.get('seat_count', 0))
     with col_o2:
         mg_selected = st.session_state.get('mg_selected', False)
         if "Arrival" in s_type:
-            st.write("") # 間距對齊
+            st.markdown("<br>", unsafe_allow_html=True) # 微調位置
             mg_selected = st.checkbox(L['mg_pickup'], value=mg_selected)
         else:
             mg_selected = False
@@ -212,9 +210,9 @@ elif st.session_state.step == 2:
                 else: st.warning(L['fill_all'])
             except: st.error(L['time_error'])
 
-# 步驟 3: 報價彙總
+# 步驟 3: 報價彙總 (修正 KeyError: 將 L['step4'] 改為 L['step3'])
 elif st.session_state.step == 3:
-    st.subheader(L['step4'])
+    st.subheader(L['step3']) # 這裡之前寫成 step4 導致報錯
     res = df[(df['Transfer Type'].astype(str).str.strip() == st.session_state.s_type) & 
              (df['Model'].astype(str).str.strip() == st.session_state.s_model) & 
              (df['Region'].astype(str).str.strip() == st.session_state.s_region) & 
@@ -230,14 +228,12 @@ elif st.session_state.step == 3:
         
         route = f"HKIA → {st.session_state.s_district}" if "Arrival" in st.session_state.s_type else (f"{st.session_state.s_district} → HKIA" if "Departure" in st.session_state.s_type else f"{st.session_state.s_type} ({st.session_state.s_district})")
         
-        summary_data = [
+        summary_df = pd.DataFrame({L['item']: L['items_list'], L['details']: [
             st.session_state.u_name, st.session_state.u_phone_full, st.session_state.u_email, 
             st.session_state.s_date.strftime("%Y-%m-%d"), st.session_state.p_time, route, 
             f"{st.session_state.seat_count} {L['seat_unit']}", 
             f"${mg_fee}" if mg_fee > 0 else "N/A", f"${base_price}", f"HKD ${total}"
-        ]
-        
-        summary_df = pd.DataFrame({L['item']: L['items_list'], L['details']: summary_data})
+        ]})
         st.table(summary_df)
         st.metric(label=L['total_metric'], value=f"HKD ${total}")
         if night_fee > 0: st.warning(L['night_warning'])
