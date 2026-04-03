@@ -243,20 +243,32 @@ else:
     st.divider()
 
     # --- 報價計算與彙總 ---
-    required_fields = [selected_type, selected_model, selected_region, selected_district, user_name, phone_number_only, user_email]
-    
-    if L['select_op'] not in required_fields and "" not in required_fields and is_email_valid and not is_invalid_time:
-        res = df[(df['Transfer Type'] == selected_type) & (df['Model'] == selected_model) & 
-                 (df['Region'] == selected_region) & (df['District'] == selected_district)]
+    # 建立一個列表檢查哪些欄位還沒填好
+    required_fields = [selected_type, selected_model, selected_region, selected_district]
+    contact_info_ready = user_name != "" and phone_number_only != "" and user_email != ""
+    menus_ready = L['select_op'] not in required_fields and L['select_reg_first'] not in required_fields
+
+    # DEBUG 用 (測試完可以刪除): 
+    # st.write(f"聯絡資料: {contact_info_ready}, 選單: {menus_ready}, 電郵有效: {is_email_valid}, 時間有效: {not is_invalid_time}")
+
+    if contact_info_ready and menus_ready and is_email_valid and not is_invalid_time:
+        # 進行過濾
+        res = df[(df['Transfer Type'] == selected_type) & 
+                 (df['Model'] == selected_model) & 
+                 (df['Region'] == selected_region) & 
+                 (df['District'] == selected_district)]
 
         if not res.empty:
             base_raw = res.iloc[0]['Result']
             try:
+                # 提取數字（處理可能存在的 $ 或 , 符號）
                 base_price = int(''.join(filter(str.isdigit, str(base_raw))))
             except:
                 base_price = 0
+                
             total_price = base_price + seat_fee + night_fee + meet_greet_fee
             
+            # 行程描述邏輯
             if selected_type == "Airport Transfer(Arrival)":
                 route = f"HKIA → {selected_district}"
             elif selected_type == "Airport Transfer(Departure)":
@@ -265,19 +277,34 @@ else:
                 route = f"{selected_type} ({selected_region}-{selected_district})"
             
             st.subheader(L['summary_title'])
-            summary = {
-                f"{L['item']}": L['items_list'],
-                f"{L['details']}": [
-                    user_name, user_phone, user_email,
-                    selected_date.strftime("%Y-%m-%d"), pickup_input,
-                    route, f"{seat_count} {L['seat_unit']}",
-                    "$80" if meet_greet_fee > 0 else "N/A",
-                    f"${base_price}", f"HKD ${total_price}"
-                ]
-            }
-            st.table(pd.DataFrame(summary))
+            
+            # 使用列表確保長度一致
+            summary_data = [
+                user_name, 
+                user_phone, 
+                user_email,
+                selected_date.strftime("%Y-%m-%d"), 
+                pickup_input,
+                route, 
+                f"{seat_count} {L['seat_unit']}",
+                f"${meet_greet_fee}" if meet_greet_fee > 0 else "N/A",
+                f"${base_price}", 
+                f"HKD ${total_price}"
+            ]
+
+            summary_df = pd.DataFrame({
+                L['item']: L['items_list'],
+                L['details']: summary_data
+            })
+            
+            st.table(summary_df)
             st.metric(label=L['total_metric'], value=f"HKD ${total_price}")
+            
             if night_fee > 0:
                 st.warning(L['night_warning'])
+        else:
+            # 如果數據庫找不到對應價格
+            st.error(L['no_price'])
     else:
+        # 顯示提示訊息引導用戶
         st.info(L['info_msg'])
