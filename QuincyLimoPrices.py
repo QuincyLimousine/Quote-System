@@ -130,12 +130,13 @@ else:
         t_types = [L['select_op']] + sorted(df['Transfer Type'].dropna().unique().tolist())
         selected_type = st.selectbox(L['type_label'], t_types)
         
-        regs = [L['select_op']] + sorted(df['Region'].dropna().unique().tolist())
-        selected_region = st.selectbox(L['region_label'], regs)
-        
-    with col_s2:
         mods = [L['select_op']] + sorted(df['Model'].dropna().unique().tolist())
         selected_model = st.selectbox(L['model_label'], mods)
+        
+    with col_s2:
+        
+        regs = [L['select_op']] + sorted(df['Region'].dropna().unique().tolist())
+        selected_region = st.selectbox(L['region_label'], regs)
         
         if selected_region != L['select_op']:
             dists = [L['select_op']] + sorted(df[df['Region'] == selected_region]['District'].dropna().unique().tolist())
