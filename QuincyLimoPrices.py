@@ -77,7 +77,7 @@ texts = {
         'district_label': 'District:',
         'select_op': 'Please Select',
         'select_reg_first': 'Select region first',
-        'seat_label': 'Child Seat ($120/each):',
+        'seat_label': 'Baby Car Seat ($120/each):',
         'mg_label': 'Meet & Greet Service ($80)',
         'mg_pickup': 'Meet & Greet (Arrival Hall A)',
         'summary_title': '📍 Summary & Quote',
