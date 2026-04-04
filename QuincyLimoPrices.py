@@ -12,7 +12,7 @@ if 'step' not in st.session_state:
 def toggle_language():
     st.session_state.lang = 'EN' if st.session_state.lang == 'CH' else 'CH'
 
-# --- 2. 翻譯字典 (已移除 time_error) ---
+# --- 2. 翻譯字典 ---
 texts = {
     'CH': {
         'title': 'Quincy Limousine 報價系統',
@@ -29,7 +29,6 @@ texts = {
         'date_label': '使用日期:',
         'time_label': '使用時間:',
         'time_placeholder': '例如: 22:30',
-        # 已刪除 time_error
         'night_warning': '🌙 已計入夜間服務費 $100 (22:00-07:00)',
         'type_label': '接送類型:',
         'region_label': '地區:',
@@ -63,7 +62,6 @@ texts = {
         'date_label': 'Date:',
         'time_label': 'Pick-up Time:',
         'time_placeholder': 'e.g. 22:30',
-        # 已刪除 time_error
         'night_warning': '🌙 Night surcharge $100 included',
         'type_label': 'Transfer Type:',
         'region_label': 'Region:',
@@ -117,9 +115,8 @@ df = load_data()
 if st.session_state.step == 1:
     st.subheader(L['step1'])
     
-    # 使用 key 讓 Streamlit 自動保存狀態，解決抓不到數值的 Bug
-    u_name = st.text_input(L['name_label'], key='u_name_input', 
-                          value=st.session_state.get('u_name', '')).strip()
+    # 使用 key 並透過 session_state 直接存取，確保即時偵測
+    u_name = st.text_input(L['name_label'], key='u_name', placeholder="Chan Tai Man").strip()
     
     raw_codes = [("🇭🇰 Hong Kong +852", "+852"), ("🇨🇳 China +86", "+86"), ("🇲🇴 Macau +853", "+853"), ("🇹🇼 Taiwan +886", "+886")]
     country_codes = sorted(raw_codes, key=lambda x: x[0][3:])
@@ -127,25 +124,18 @@ if st.session_state.step == 1:
     col_c, col_p = st.columns([0.45, 0.55])
     with col_c:
         hk_idx = next((i for i, c in enumerate(country_codes) if "+852" in c[1]), 0)
-        code_disp = st.selectbox("Code", options=[c[0] for c in country_codes], index=hk_idx)
+        code_disp = st.selectbox("Code", options=[c[0] for c in country_codes], index=hk_idx, key='sel_code_disp')
         sel_code = next(c[1] for c in country_codes if c[0] == code_disp)
     with col_p:
-        u_phone_raw = st.text_input(L['phone_label'], key='u_phone_raw_input',
-                                   value=st.session_state.get('u_phone_raw', ''), placeholder="9123 4567").strip()
+        u_phone_raw = st.text_input(L['phone_label'], key='u_phone_raw', placeholder="9123 4567").strip()
     
-    u_email = st.text_input(L['email_label'], key='u_email_input',
-                           value=st.session_state.get('u_email', ''), placeholder="example@gmail.com").strip()
+    u_email = st.text_input(L['email_label'], key='u_email', placeholder="example@gmail.com").strip()
     
-    # 驗證邏輯
     email_valid = "@gmail.com" in u_email.lower() if u_email else False
 
     if st.button(L['next']):
-        # 確保所有欄位都有值且 Email 格式正確
         if u_name and u_phone_raw and email_valid:
-            st.session_state.u_name = u_name
-            st.session_state.u_phone_raw = u_phone_raw
             st.session_state.u_phone_full = f"{sel_code} {u_phone_raw}"
-            st.session_state.u_email = u_email
             st.session_state.step = 2
             st.rerun()
         else:
@@ -154,59 +144,63 @@ if st.session_state.step == 1:
             else: 
                 st.warning(L['fill_all'])
 
-# 步驟 2: 行程詳情 (移除時間驗證邏輯)
+# 步驟 2: 行程詳情
 elif st.session_state.step == 2:
     st.subheader(L['step2'])
     
     col_t1, col_t2 = st.columns(2)
     with col_t1:
-        s_date = st.date_input(L['date_label'], value=st.session_state.get('s_date', date.today()), min_value=date.today())
+        s_date = st.date_input(L['date_label'], key='s_date', min_value=date.today())
     with col_t2:
-        p_time = st.text_input(L['time_label'], value=st.session_state.get('p_time', ''), placeholder=L['time_placeholder']).strip()
+        p_time = st.text_input(L['time_label'], key='p_time', placeholder=L['time_placeholder']).strip()
     
     st.divider()
     
     col_s1, col_s2 = st.columns(2)
     with col_s1:
         t_types = [L['select_op']] + sorted(df['Transfer Type'].dropna().unique().tolist())
-        s_type = st.selectbox(L['type_label'], t_types, index=t_types.index(st.session_state.get('s_type')) if st.session_state.get('s_type') in t_types else 0)
+        s_type = st.selectbox(L['type_label'], t_types, key='s_type')
+        
         regs = [L['select_op']] + sorted(df['Region'].dropna().unique().tolist())
-        s_region = st.selectbox(L['region_label'], regs, index=regs.index(st.session_state.get('s_region')) if st.session_state.get('s_region') in regs else 0)
+        s_region = st.selectbox(L['region_label'], regs, key='s_region')
+        
     with col_s2:
         mods = [L['select_op']] + sorted(df['Model'].dropna().unique().tolist())
-        s_model = st.selectbox(L['model_label'], mods, index=mods.index(st.session_state.get('s_model')) if st.session_state.get('s_model') in mods else 0)
-        if s_region != L['select_op']:
-            dists = [L['select_op']] + sorted(df[df['Region'] == s_region]['District'].dropna().unique().tolist())
-            s_district = st.selectbox(L['district_label'], dists, index=dists.index(st.session_state.get('s_district')) if st.session_state.get('s_district') in dists else 0)
+        s_model = st.selectbox(L['model_label'], mods, key='s_model')
+        
+        if st.session_state.s_region != L['select_op']:
+            dists = [L['select_op']] + sorted(df[df['Region'] == st.session_state.s_region]['District'].dropna().unique().tolist())
+            s_district = st.selectbox(L['district_label'], dists, key='s_district')
         else:
-            s_district = st.selectbox(L['district_label'], [L['select_reg_first']])
+            st.selectbox(L['district_label'], [L['select_reg_first']], disabled=True)
 
     st.divider()
 
     col_o1, col_o2 = st.columns(2)
     with col_o1:
-        seat_count = st.number_input(L['seat_label'], min_value=0, max_value=4, value=st.session_state.get('seat_count', 0))
+        seat_count = st.number_input(L['seat_label'], min_value=0, max_value=4, key='seat_count')
     with col_o2:
-        mg_selected = st.session_state.get('mg_selected', False)
-        if "Arrival" in s_type:
+        if "Arrival" in st.session_state.s_type:
             st.markdown("<br>", unsafe_allow_html=True)
-            mg_selected = st.checkbox(L['mg_pickup'], value=mg_selected)
+            mg_selected = st.checkbox(L['mg_pickup'], key='mg_selected')
         else:
-            mg_selected = False
+            st.session_state.mg_selected = False
 
     col_nav1, col_nav2 = st.columns(2)
     with col_nav1:
         if st.button(L['prev']): st.session_state.step = 1; st.rerun()
     with col_nav2:
         if st.button(L['next']):
-            # 簡化判斷邏輯，不再進行 parser.parse 驗證
-            if p_time and all(x != L['select_op'] and x != L['select_reg_first'] for x in [s_type, s_model, s_region, s_district]):
-                st.session_state.update({
-                    "s_date": s_date, "p_time": p_time, 
-                    "s_type": s_type, "s_model": s_model, 
-                    "s_region": s_region, "s_district": s_district,
-                    "seat_count": seat_count, "mg_selected": mg_selected
-                })
+            # 檢查所有必填項是否已選擇/填寫
+            required_fields = [
+                st.session_state.p_time,
+                st.session_state.s_type != L['select_op'],
+                st.session_state.s_model != L['select_op'],
+                st.session_state.s_region != L['select_op'],
+                st.session_state.get('s_district') and st.session_state.s_district != L['select_op']
+            ]
+            
+            if all(required_fields):
                 st.session_state.step = 3
                 st.rerun()
             else:
@@ -223,15 +217,14 @@ elif st.session_state.step == 3:
     if not res.empty:
         base_price = int(''.join(filter(str.isdigit, str(res.iloc[0]['Result']))))
         
-        # 僅在最終報價計算時嘗試解析時間以決定夜間費
         try:
             parsed_time = parser.parse(st.session_state.p_time).time()
             night_fee = 100 if (parsed_time >= pd.to_datetime("22:00").time() or 
                                 parsed_time <= pd.to_datetime("07:00").time()) else 0
         except:
-            night_fee = 0 # 如果格式真的太亂解析不了，預設不收夜間費
+            night_fee = 0 
             
-        mg_fee = 80 if st.session_state.mg_selected else 0
+        mg_fee = 80 if st.session_state.get('mg_selected', False) else 0
         seat_fee = st.session_state.seat_count * 120
         total = base_price + night_fee + mg_fee + seat_fee
         
