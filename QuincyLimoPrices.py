@@ -3,16 +3,15 @@ import pandas as pd
 from dateutil import parser
 from datetime import date, datetime
 
-# --- 1. 初始化語言與步驟設定 ---
+# --- 1. 初始化與變數設定 ---
 if 'lang' not in st.session_state:
     st.session_state.lang = 'CH'
 if 'step' not in st.session_state:
     st.session_state.step = 1
 
-# 初始化持久化變數，防止 AttributeError
 persistent_vars = ['u_name_val', 'u_phone_full', 'u_phone_raw_val', 'u_email_val', 
                    'p_time_val', 's_type_val', 's_model_val', 's_region_val', 
-                   's_district_val', 'seat_count_val', 'mg_selected_val']
+                   's_district_val', 'seat_count_val', 'mg_selected_val', 's_date_val']
 for var in persistent_vars:
     if var not in st.session_state:
         st.session_state[var] = "" if "val" in var else False
@@ -20,7 +19,7 @@ for var in persistent_vars:
 def toggle_language():
     st.session_state.lang = 'EN' if st.session_state.lang == 'CH' else 'CH'
 
-# --- 2. 翻譯字典 ---
+# --- 2. 翻譯字典 (微調項目清單以支援動態顯示) ---
 texts = {
     'CH': {
         'title': 'Quincy Limousine 報價系統',
@@ -50,10 +49,14 @@ texts = {
         'summary_title': '📍 預約彙總與報價',
         'item': '項目',
         'details': '內容',
-        'items_list': ["客戶姓名", "聯絡電話", "Gmail", "日期", "時間", "行程", "安全座椅", "接機服務", "基本車資", "總費用"],
         'total_metric': '預計總費用',
         'no_price': '查無此組合價格，請聯繫客服。',
-        'seat_unit': '張'
+        'seat_unit': '張',
+        'map_labels': {
+            "Name": "客戶姓名", "Phone": "聯絡電話", "Gmail": "Gmail", 
+            "Date": "日期", "Time": "時間", "Route": "行程路徑", 
+            "Seat": "安全座椅", "MG": "接機服務", "Base": "基本車資", "Total": "總費用"
+        }
     },
     'EN': {
         'title': 'Quincy Limousine Quote System',
@@ -83,10 +86,14 @@ texts = {
         'summary_title': '📍 Summary & Quote',
         'item': 'Item',
         'details': 'Details',
-        'items_list': ["Name", "Phone", "Gmail", "Date", "Time", "Route", "Child Seat", "Meet & Greet", "Base Fare", "Total"],
         'total_metric': 'Total Estimated Price',
         'no_price': 'Price not found for this combination.',
-        'seat_unit': 'Seat(s)'
+        'seat_unit': 'Seat(s)',
+        'map_labels': {
+            "Name": "Name", "Phone": "Phone", "Gmail": "Gmail", 
+            "Date": "Date", "Time": "Time", "Route": "Route", 
+            "Seat": "Child Seat", "MG": "Meet & Greet", "Base": "Base Fare", "Total": "Total"
+        }
     }
 }
 
@@ -122,10 +129,9 @@ df = load_data()
 # 步驟 1: 聯絡資料
 if st.session_state.step == 1:
     st.subheader(L['step1'])
-    
     st.text_input(L['name_label'], key='u_name', value=st.session_state.u_name_val)
     
-    raw_codes = [("🇭🇰 Hong Kong +852", "+852"), ("🇨🇳 China +86", "+86"), ("🇲🇴 Macau +853", "+853"), ("🇹🇼 Taiwan +886", "+886")]
+    raw_codes = [("Hong Kong +852", "+852"), ("China +86", "+86"), ("Macau +853", "+853"), ("Taiwan +886", "+886")]
     country_codes = sorted(raw_codes, key=lambda x: x[0][3:])
     
     col_c, col_p = st.columns([0.45, 0.55])
@@ -144,7 +150,6 @@ if st.session_state.step == 1:
         sel_code = next(c[1] for c in country_codes if c[0] == st.session_state.sel_code_disp)
         
         if name and phone and "@gmail.com" in email.lower():
-            # 強制存入持久化變數
             st.session_state.u_name_val = name
             st.session_state.u_phone_raw_val = phone
             st.session_state.u_phone_full = f"{sel_code} {phone}"
@@ -189,8 +194,13 @@ elif st.session_state.step == 2:
     with col_o1:
         st.number_input(L['seat_label'], min_value=0, max_value=4, key='seat_count')
     with col_o2:
+        # 修改點 1: 僅在選擇了 Airport Transfer(Arrival) 時顯示接機服務選項
         if "Arrival" in st.session_state.s_type:
-            st.checkbox(L['mg_pickup'], key='mg_selected')
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.checkbox(L['mg_pickup'], key='mg_selected', value=st.session_state.mg_selected_val)
+        else:
+            # 如果不是接機，確保後台變數為 False
+            st.session_state.mg_selected_val = False
 
     col_nav1, col_nav2 = st.columns(2)
     with col_nav1:
@@ -199,16 +209,15 @@ elif st.session_state.step == 2:
         if st.button(L['next']):
             time_val = st.session_state.p_time.strip()
             if time_val and st.session_state.s_type != L['select_op'] and st.session_state.s_region != L['select_op']:
-                # 存入持久化變數
                 st.session_state.p_time_val = time_val
                 st.session_state.s_type_val = st.session_state.s_type
                 st.session_state.s_model_val = st.session_state.s_model
                 st.session_state.s_region_val = st.session_state.s_region
                 st.session_state.s_district_val = st.session_state.get('s_district', '')
                 st.session_state.seat_count_val = st.session_state.seat_count
+                # 如果畫面上沒有 mg_selected (非接機行程)，預設為 False
                 st.session_state.mg_selected_val = st.session_state.get('mg_selected', False)
                 st.session_state.s_date_val = st.session_state.s_date_widget
-                
                 st.session_state.step = 3
                 st.rerun()
             else:
@@ -218,62 +227,57 @@ elif st.session_state.step == 2:
 elif st.session_state.step == 3:
     st.subheader(L['step3']) 
     
-    # 1. 從持久化變數提取資料並過濾 DataFrame
     res = df[(df['Transfer Type'] == st.session_state.s_type_val) & 
              (df['Model'] == st.session_state.s_model_val) & 
              (df['Region'] == st.session_state.s_region_val) & 
              (df['District'] == st.session_state.s_district_val)]
 
     if not res.empty:
-        # 2. 基礎車資提取
         base_raw = res.iloc[0]['Result']
         try:
             base_price = int(''.join(filter(str.isdigit, str(base_raw))))
-        except:
-            base_price = 0
+        except: base_price = 0
             
-        # 3. 附加費計算 (夜間、接機、安全座椅)
         try:
             parsed_time = parser.parse(st.session_state.p_time_val).time()
             night_fee = 100 if (parsed_time >= pd.to_datetime("22:00").time() or 
                                 parsed_time <= pd.to_datetime("07:00").time()) else 0
-        except: 
-            night_fee = 0 
+        except: night_fee = 0 
             
         mg_fee = 80 if st.session_state.mg_selected_val else 0
         seat_fee = st.session_state.seat_count_val * 120
         total_price = base_price + night_fee + mg_fee + seat_fee
         
-        # 4. 路由名稱優化 (根據接送類型顯示不同格式)
         s_type = st.session_state.s_type_val
         s_district = st.session_state.s_district_val
+        route = f"HKIA → {s_district}" if "Arrival" in s_type else (f"{s_district} → HKIA" if "Departure" in s_type else f"{s_type} ({s_district})")
         
-        if "Arrival" in s_type:
-            route = f"HKIA → {s_district}"
-        elif "Departure" in s_type:
-            route = f"{s_district} → HKIA"
-        else:
-            route = f"{s_type} ({s_district})"
+        # 修改點 2: 動態建構表格內容
+        m = L['map_labels']
+        items = [
+            (m["Name"], st.session_state.u_name_val),
+            (m["Phone"], st.session_state.u_phone_full),
+            (m["Gmail"], st.session_state.u_email_val),
+            (m["Date"], st.session_state.s_date_val.strftime("%Y-%m-%d")),
+            (m["Time"], st.session_state.p_time_val),
+            (m["Route"], route)
+        ]
         
-        # 5. 構建彙總表 (融合第一段的字典結構與第二段的持久化變數)
-        summary_data = {
-            L['item']: L['items_list'],
-            L['details']: [
-                st.session_state.u_name_val, 
-                st.session_state.u_phone_full, 
-                st.session_state.u_email_val, 
-                st.session_state.s_date_val.strftime("%Y-%m-%d"), 
-                st.session_state.p_time_val, 
-                route, 
-                f"{st.session_state.seat_count_val} {L['seat_unit']}", 
-                f"${mg_fee}" if mg_fee > 0 else "N/A", 
-                f"${base_price}", 
-                f"HKD ${total_price}"
-            ]
-        }
+        # 如果有安全座椅才顯示
+        if st.session_state.seat_count_val > 0:
+            items.append((m["Seat"], f"{st.session_state.seat_count_val} {L['seat_unit']}"))
+            
+        # 僅當「使用者勾選了接機服務」才顯示在彙總中
+        if st.session_state.mg_selected_val:
+            items.append((m["MG"], f"${mg_fee}"))
+            
+        items.extend([
+            (m["Base"], f"${base_price}"),
+            (m["Total"], f"HKD ${total_price}")
+        ])
         
-        # 6. UI 渲染
-        st.table(pd.DataFrame(summary_data))
+        summary_df = pd.DataFrame(items, columns=[L['item'], L['details']])
+        st.table(summary_df)
         st.metric(label=L['total_metric'], value=f"HKD ${total_price}")
         
         if night_fee > 0:
@@ -282,7 +286,6 @@ elif st.session_state.step == 3:
     else: 
         st.error(L['no_price'])
     
-    # 返回按鈕
     if st.button(L['prev']): 
         st.session_state.step = 2
         st.rerun()
