@@ -115,8 +115,8 @@ df = load_data()
 if st.session_state.step == 1:
     st.subheader(L['step1'])
     
-    # 使用 key 並透過 session_state 直接存取，確保即時偵測
-    u_name = st.text_input(L['name_label'], key='u_name', placeholder="Chan Tai Man").strip()
+    # 這裡移除 value=...，改用 key 綁定
+    st.text_input(L['name_label'], key='u_name', placeholder="Chan Tai Man")
     
     raw_codes = [("🇭🇰 Hong Kong +852", "+852"), ("🇨🇳 China +86", "+86"), ("🇲🇴 Macau +853", "+853"), ("🇹🇼 Taiwan +886", "+886")]
     country_codes = sorted(raw_codes, key=lambda x: x[0][3:])
@@ -124,22 +124,30 @@ if st.session_state.step == 1:
     col_c, col_p = st.columns([0.45, 0.55])
     with col_c:
         hk_idx = next((i for i, c in enumerate(country_codes) if "+852" in c[1]), 0)
-        code_disp = st.selectbox("Code", options=[c[0] for c in country_codes], index=hk_idx, key='sel_code_disp')
-        sel_code = next(c[1] for c in country_codes if c[0] == code_disp)
+        st.selectbox("Code", options=[c[0] for c in country_codes], index=hk_idx, key='sel_code_disp')
     with col_p:
-        u_phone_raw = st.text_input(L['phone_label'], key='u_phone_raw', placeholder="9123 4567").strip()
+        st.text_input(L['phone_label'], key='u_phone_raw', placeholder="9123 4567")
     
-    u_email = st.text_input(L['email_label'], key='u_email', placeholder="example@gmail.com").strip()
+    st.text_input(L['email_label'], key='u_email', placeholder="example@gmail.com")
     
-    email_valid = "@gmail.com" in u_email.lower() if u_email else False
-
+    # 點擊「下一步」按鈕
     if st.button(L['next']):
-        if u_name and u_phone_raw and email_valid:
-            st.session_state.u_phone_full = f"{sel_code} {u_phone_raw}"
+        # 直接從 session_state 讀取當前畫面上的值
+        name = st.session_state.u_name.strip()
+        phone_raw = st.session_state.u_phone_raw.strip()
+        email = st.session_state.u_email.strip()
+        
+        # 獲取選中的區碼
+        sel_code = next(c[1] for c in country_codes if c[0] == st.session_state.sel_code_disp)
+        
+        email_valid = "@gmail.com" in email.lower() if email else False
+
+        if name and phone_raw and email_valid:
+            st.session_state.u_phone_full = f"{sel_code} {phone_raw}"
             st.session_state.step = 2
             st.rerun()
         else:
-            if u_email and not email_valid: 
+            if email and not email_valid: 
                 st.error(L['email_error'])
             else: 
                 st.warning(L['fill_all'])
@@ -150,57 +158,59 @@ elif st.session_state.step == 2:
     
     col_t1, col_t2 = st.columns(2)
     with col_t1:
-        s_date = st.date_input(L['date_label'], key='s_date', min_value=date.today())
+        st.date_input(L['date_label'], key='s_date', min_value=date.today())
     with col_t2:
-        p_time = st.text_input(L['time_label'], key='p_time', placeholder=L['time_placeholder']).strip()
+        st.text_input(L['time_label'], key='p_time', placeholder=L['time_placeholder'])
     
     st.divider()
     
     col_s1, col_s2 = st.columns(2)
     with col_s1:
         t_types = [L['select_op']] + sorted(df['Transfer Type'].dropna().unique().tolist())
-        s_type = st.selectbox(L['type_label'], t_types, key='s_type')
+        st.selectbox(L['type_label'], t_types, key='s_type')
         
         regs = [L['select_op']] + sorted(df['Region'].dropna().unique().tolist())
-        s_region = st.selectbox(L['region_label'], regs, key='s_region')
+        st.selectbox(L['region_label'], regs, key='s_region')
         
     with col_s2:
         mods = [L['select_op']] + sorted(df['Model'].dropna().unique().tolist())
-        s_model = st.selectbox(L['model_label'], mods, key='s_model')
+        st.selectbox(L['model_label'], mods, key='s_model')
         
-        if st.session_state.s_region != L['select_op']:
-            dists = [L['select_op']] + sorted(df[df['Region'] == st.session_state.s_region]['District'].dropna().unique().tolist())
-            s_district = st.selectbox(L['district_label'], dists, key='s_district')
+        # 處理動態地區選單
+        current_reg = st.session_state.s_region
+        if current_reg != L['select_op']:
+            dists = [L['select_op']] + sorted(df[df['Region'] == current_reg]['District'].dropna().unique().tolist())
+            st.selectbox(L['district_label'], dists, key='s_district')
         else:
-            st.selectbox(L['district_label'], [L['select_reg_first']], disabled=True)
+            st.selectbox(L['district_label'], [L['select_reg_first']], disabled=True, key='s_district_disabled')
 
     st.divider()
 
     col_o1, col_o2 = st.columns(2)
     with col_o1:
-        seat_count = st.number_input(L['seat_label'], min_value=0, max_value=4, key='seat_count')
+        st.number_input(L['seat_label'], min_value=0, max_value=4, key='seat_count_val')
     with col_o2:
         if "Arrival" in st.session_state.s_type:
             st.markdown("<br>", unsafe_allow_html=True)
-            mg_selected = st.checkbox(L['mg_pickup'], key='mg_selected')
+            st.checkbox(L['mg_pickup'], key='mg_selected_val')
         else:
-            st.session_state.mg_selected = False
+            # 非接機行程強制設為 False
+            st.session_state.mg_selected_val = False
 
     col_nav1, col_nav2 = st.columns(2)
     with col_nav1:
         if st.button(L['prev']): st.session_state.step = 1; st.rerun()
     with col_nav2:
         if st.button(L['next']):
-            # 檢查所有必填項是否已選擇/填寫
-            required_fields = [
-                st.session_state.p_time,
-                st.session_state.s_type != L['select_op'],
-                st.session_state.s_model != L['select_op'],
-                st.session_state.s_region != L['select_op'],
-                st.session_state.get('s_district') and st.session_state.s_district != L['select_op']
-            ]
+            # 檢查必填項
+            time_input = st.session_state.p_time.strip()
+            type_sel = st.session_state.s_type
+            model_sel = st.session_state.s_model
+            region_sel = st.session_state.s_region
+            district_sel = st.session_state.get('s_district', L['select_op'])
             
-            if all(required_fields):
+            if time_input and type_sel != L['select_op'] and model_sel != L['select_op'] and \
+               region_sel != L['select_op'] and district_sel != L['select_op']:
                 st.session_state.step = 3
                 st.rerun()
             else:
@@ -209,6 +219,8 @@ elif st.session_state.step == 2:
 # 步驟 3: 報價彙總
 elif st.session_state.step == 3:
     st.subheader(L['step3']) 
+    
+    # 從 session_state 提取資料進行過濾
     res = df[(df['Transfer Type'].astype(str).str.strip() == st.session_state.s_type) & 
              (df['Model'].astype(str).str.strip() == st.session_state.s_model) & 
              (df['Region'].astype(str).str.strip() == st.session_state.s_region) & 
@@ -224,8 +236,8 @@ elif st.session_state.step == 3:
         except:
             night_fee = 0 
             
-        mg_fee = 80 if st.session_state.get('mg_selected', False) else 0
-        seat_fee = st.session_state.seat_count * 120
+        mg_fee = 80 if st.session_state.get('mg_selected_val', False) else 0
+        seat_fee = st.session_state.get('seat_count_val', 0) * 120
         total = base_price + night_fee + mg_fee + seat_fee
         
         route = f"HKIA → {st.session_state.s_district}" if "Arrival" in st.session_state.s_type else (f"{st.session_state.s_district} → HKIA" if "Departure" in st.session_state.s_type else f"{st.session_state.s_type} ({st.session_state.s_district})")
@@ -233,7 +245,7 @@ elif st.session_state.step == 3:
         summary_df = pd.DataFrame({L['item']: L['items_list'], L['details']: [
             st.session_state.u_name, st.session_state.u_phone_full, st.session_state.u_email, 
             st.session_state.s_date.strftime("%Y-%m-%d"), st.session_state.p_time, route, 
-            f"{st.session_state.seat_count} {L['seat_unit']}", 
+            f"{st.session_state.seat_count_val} {L['seat_unit']}", 
             f"${mg_fee}" if mg_fee > 0 else "N/A", f"${base_price}", f"HKD ${total}"
         ]})
         st.table(summary_df)
