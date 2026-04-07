@@ -19,7 +19,7 @@ for var in persistent_vars:
 def toggle_language():
     st.session_state.lang = 'EN' if st.session_state.lang == 'CH' else 'CH'
 
-# --- 2. 翻譯字典 (微調項目清單以支援動態顯示) ---
+# --- 2. 翻譯字典 ---
 texts = {
     'CH': {
         'title': 'Quincy Limousine 報價系統',
@@ -131,12 +131,54 @@ if st.session_state.step == 1:
     st.subheader(L['step1'])
     st.text_input(L['name_label'], key='u_name', value=st.session_state.u_name_val)
     
-    raw_codes = [("Hong Kong +852", "+852"), ("China +86", "+86"), ("Macau +853", "+853"), ("Taiwan +886", "+886")]
-    country_codes = sorted(raw_codes, key=lambda x: x[0][3:])
+    # 全球區號清單 (已移除國旗 Emoji)
+    raw_codes_data = [
+        ("Afghanistan +93", "+93"), ("Albania +355", "+355"), ("Algeria +213", "+213"),
+        ("Andorra +376", "+376"), ("Angola +244", "+244"), ("Argentina +54", "+54"),
+        ("Armenia +374", "+374"), ("Australia +61", "+61"), ("Austria +43", "+43"),
+        ("Azerbaijan +994", "+994"), ("Bahrain +973", "+973"), ("Bangladesh +880", "+880"),
+        ("Belgium +32", "+32"), ("Belize +501", "+501"), ("Benin +229", "+229"),
+        ("Bhutan +975", "+975"), ("Bolivia +591", "+591"), ("Bosnia +387", "+387"),
+        ("Botswana +267", "+267"), ("Brazil +55", "+55"), ("Brunei +673", "+673"),
+        ("Bulgaria +359", "+359"), ("Cambodia +855", "+855"), ("Cameroon +237", "+237"),
+        ("Canada +1", "+1"), ("Chile +56", "+56"), ("China +86", "+86"),
+        ("Colombia +57", "+57"), ("Costa Rica +506", "+506"), ("Croatia +385", "+385"),
+        ("Cuba +53", "+53"), ("Cyprus +357", "+357"), ("Czech +420", "+420"),
+        ("Denmark +45", "+45"), ("Ecuador +593", "+593"), ("Egypt +20", "+20"),
+        ("Finland +358", "+358"), ("France +33", "+33"), ("Germany +49", "+49"),
+        ("Ghana +233", "+233"), ("Greece +30", "+30"), ("Hong Kong +852", "+852"),
+        ("Hungary +36", "+36"), ("Iceland +354", "+354"), ("India +91", "+91"),
+        ("Indonesia +62", "+62"), ("Iran +98", "+98"), ("Iraq +964", "+964"),
+        ("Ireland +353", "+353"), ("Israel +972", "+972"), ("Italy +39", "+39"),
+        ("Jamaica +1876", "+1876"), ("Japan +81", "+81"), ("Jordan +962", "+962"),
+        ("Kazakhstan +7", "+7"), ("Kenya +254", "+254"), ("Kuwait +965", "+965"),
+        ("Laos +856", "+856"), ("Lebanon +961", "+961"), ("Macau +853", "+853"),
+        ("Malaysia +60", "+60"), ("Maldives +960", "+960"), ("Malta +356", "+356"),
+        ("Mexico +52", "+52"), ("Monaco +377", "+377"), ("Mongolia +976", "+976"),
+        ("Morocco +212", "+212"), ("Myanmar +95", "+95"), ("Nepal +977", "+977"),
+        ("Netherlands +31", "+31"), ("New Zealand +64", "+64"), ("Nigeria +234", "+234"),
+        ("Norway +47", "+47"), ("Pakistan +92", "+92"), ("Panama +507", "+507"),
+        ("Papua New Guinea +675", "+675"), ("Paraguay +595", "+595"), ("Peru +51", "+51"),
+        ("Philippines +63", "+63"), ("Poland +48", "+48"), ("Portugal +351", "+351"),
+        ("Qatar +974", "+974"), ("Romania +40", "+40"), ("Russia +7", "+7"),
+        ("Saudi Arabia +966", "+966"), ("Singapore +65", "+65"), ("Slovakia +421", "+421"),
+        ("South Africa +27", "+27"), ("Spain +34", "+34"), ("Sri Lanka +94", "+94"),
+        ("Sweden +46", "+46"), ("Switzerland +41", "+41"), ("Taiwan +886", "+886"),
+        ("Thailand +66", "+66"), ("Turkey +90", "+90"), ("Ukraine +380", "+380"),
+        ("UAE +971", "+971"), ("United Kingdom +44", "+44"), ("United States +1", "+1"),
+        ("Vietnam +84", "+84")
+    ]
+    
+    country_codes = sorted(raw_codes_data, key=lambda x: x[0])
     
     col_c, col_p = st.columns([0.45, 0.55])
     with col_c:
-        hk_idx = next((i for i, c in enumerate(country_codes) if "+852" in c[1]), 0)
+        # 自動定位 Hong Kong 的 Index
+        try:
+            hk_idx = next(i for i, c in enumerate(country_codes) if "Hong Kong" in c[0])
+        except StopIteration:
+            hk_idx = 0
+            
         st.selectbox("Code", options=[c[0] for c in country_codes], index=hk_idx, key='sel_code_disp')
     with col_p:
         st.text_input(L['phone_label'], key='u_phone_raw', value=st.session_state.u_phone_raw_val)
@@ -194,12 +236,10 @@ elif st.session_state.step == 2:
     with col_o1:
         st.number_input(L['seat_label'], min_value=0, max_value=4, key='seat_count')
     with col_o2:
-        # 修改點 1: 僅在選擇了 Airport Transfer(Arrival) 時顯示接機服務選項
         if "Arrival" in st.session_state.s_type:
             st.markdown("<br>", unsafe_allow_html=True)
             st.checkbox(L['mg_pickup'], key='mg_selected', value=st.session_state.mg_selected_val)
         else:
-            # 如果不是接機，確保後台變數為 False
             st.session_state.mg_selected_val = False
 
     col_nav1, col_nav2 = st.columns(2)
@@ -215,7 +255,6 @@ elif st.session_state.step == 2:
                 st.session_state.s_region_val = st.session_state.s_region
                 st.session_state.s_district_val = st.session_state.get('s_district', '')
                 st.session_state.seat_count_val = st.session_state.seat_count
-                # 如果畫面上沒有 mg_selected (非接機行程)，預設為 False
                 st.session_state.mg_selected_val = st.session_state.get('mg_selected', False)
                 st.session_state.s_date_val = st.session_state.s_date_widget
                 st.session_state.step = 3
@@ -252,7 +291,6 @@ elif st.session_state.step == 3:
         s_district = st.session_state.s_district_val
         route = f"HKIA → {s_district}" if "Arrival" in s_type else (f"{s_district} → HKIA" if "Departure" in s_type else f"{s_type} ({s_district})")
         
-        # 修改點 2: 動態建構表格內容
         m = L['map_labels']
         items = [
             (m["Name"], st.session_state.u_name_val),
@@ -263,11 +301,9 @@ elif st.session_state.step == 3:
             (m["Route"], route)
         ]
         
-        # 如果有安全座椅才顯示
         if st.session_state.seat_count_val > 0:
             items.append((m["Seat"], f"{st.session_state.seat_count_val} {L['seat_unit']}"))
             
-        # 僅當「使用者勾選了接機服務」才顯示在彙總中
         if st.session_state.mg_selected_val:
             items.append((m["MG"], f"${mg_fee}"))
             
