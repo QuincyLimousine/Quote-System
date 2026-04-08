@@ -52,6 +52,7 @@ texts = {
         'total_metric': '預計總費用',
         'no_price': '查無此組合價格，請聯繫客服。',
         'seat_unit': '張',
+        'cust_info_label': '👤 客戶資訊 (點擊展開)',
         'map_labels': {
             "Name": "客戶姓名", "Phone": "聯絡電話", "Gmail": "Gmail", 
             "Date": "日期", "Time": "時間", "Route": "行程路徑", 
@@ -89,6 +90,7 @@ texts = {
         'total_metric': 'Total Estimated Price',
         'no_price': 'Price not found for this combination.',
         'seat_unit': 'Seat(s)',
+        'cust_info_label': '👤 Customer Information (Click to expand)',
         'map_labels': {
             "Name": "Name", "Phone": "Phone", "Gmail": "Gmail", 
             "Date": "Date", "Time": "Time", "Route": "Route", 
@@ -131,7 +133,6 @@ if st.session_state.step == 1:
     st.subheader(L['step1'])
     st.text_input(L['name_label'], key='u_name', value=st.session_state.u_name_val)
     
-    # 全球區號清單 (已移除國旗 Emoji)
     raw_codes_data = [
         ("Afghanistan +93", "+93"), ("Albania +355", "+355"), ("Algeria +213", "+213"),
         ("Andorra +376", "+376"), ("Angola +244", "+244"), ("Argentina +54", "+54"),
@@ -173,12 +174,10 @@ if st.session_state.step == 1:
     
     col_c, col_p = st.columns([0.45, 0.55])
     with col_c:
-        # 自動定位 Hong Kong 的 Index
         try:
             hk_idx = next(i for i, c in enumerate(country_codes) if "Hong Kong" in c[0])
         except StopIteration:
             hk_idx = 0
-            
         st.selectbox("Code", options=[c[0] for c in country_codes], index=hk_idx, key='sel_code_disp')
     with col_p:
         st.text_input(L['phone_label'], key='u_phone_raw', value=st.session_state.u_phone_raw_val)
@@ -212,6 +211,19 @@ elif st.session_state.step == 2:
         st.text_input(L['time_label'], key='p_time', value=st.session_state.p_time_val)
     
     st.divider()
+
+    # --- 車型圖片顯示邏輯 ---
+    model_images = {
+        "Comfort 5-Seater": "https://raw.githubusercontent.com/QuincyLimousine/Quincy-Limousine-Prices/main/Vehicle%20Type/Compact%205-Seater.png",
+        "Deluxe 5-Seater": "https://raw.githubusercontent.com/QuincyLimousine/Quincy-Limousine-Prices/main/Vehicle%20Type/Deluxe%205-Seater.png",
+        "Deluxe 7-Seater": "https://raw.githubusercontent.com/QuincyLimousine/Quincy-Limousine-Prices/main/Vehicle%20Type/Deluxe%207-Seater.png",
+        "Premium 7-Seater": "https://raw.githubusercontent.com/QuincyLimousine/Quincy-Limousine-Prices/main/Vehicle%20Type/Premium%207-Seater.png"
+    }
+    
+    # 這裡先預抓目前的選擇 (或是預設值)
+    current_model = st.session_state.get('s_model', L['select_op'])
+    if current_model in model_images:
+        st.image(model_images[current_model], use_container_width=True)
     
     col_s1, col_s2 = st.columns(2)
         
@@ -292,10 +304,18 @@ elif st.session_state.step == 3:
         route = f"HKIA → {s_district}" if "Arrival" in s_type else (f"{s_district} → HKIA" if "Departure" in s_type else f"{s_type} ({s_district})")
         
         m = L['map_labels']
+
+        # --- 客戶資訊 (點擊展開) ---
+        with st.expander(L['cust_info_label']):
+            cust_items = [
+                (m["Name"], st.session_state.u_name_val),
+                (m["Phone"], st.session_state.u_phone_full),
+                (m["Gmail"], st.session_state.u_email_val)
+            ]
+            st.table(pd.DataFrame(cust_items, columns=[L['item'], L['details']]))
+
+        # --- 行程詳情 (直接顯示) ---
         items = [
-            (m["Name"], st.session_state.u_name_val),
-            (m["Phone"], st.session_state.u_phone_full),
-            (m["Gmail"], st.session_state.u_email_val),
             (m["Date"], st.session_state.s_date_val.strftime("%Y-%m-%d")),
             (m["Time"], st.session_state.p_time_val),
             (m["Route"], route)
