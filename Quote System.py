@@ -6,7 +6,7 @@ from dateutil import parser
 from datetime import date, datetime
 
 # --- 配置區 ---
-GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxg6257SpGnlvvvNPk2nnZwKUkzjPjikPMU2YChXmYHLV1swPAsqLOw0P_uaQAm-r4n/exec"
+GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz1qKemUNIhtfKrEocAx6C_Hns_-RDoFSaqAUWGmHckFsqb1V3vyu0hge0TpVi_sEI/exec"
 
 # --- 1. 初始化與變數設定 ---
 if 'lang' not in st.session_state:
@@ -16,10 +16,10 @@ if 'step' not in st.session_state:
 
 persistent_vars = ['u_name_val', 'u_phone_full', 'u_phone_raw_val', 'u_email_val', 'u_social_val',
                    'p_time_val', 's_type_val', 's_model_val', 's_region_val', 
-                   's_district_val', 'seat_count_val', 'mg_selected_val', 's_date_val']
+                   's_district_val', 'seat_count_val', 'mg_selected_val', 's_date_val', 'record_id']
 for var in persistent_vars:
     if var not in st.session_state:
-        st.session_state[var] = [] if var == 'u_social_val' else ("" if "val" in var else False)
+        st.session_state[var] = [] if var == 'u_social_val' else ("" if "val" in var or var == 'record_id' else False)
 
 def toggle_language():
     st.session_state.lang = 'EN' if st.session_state.lang == 'CH' else 'CH'
@@ -269,16 +269,43 @@ elif st.session_state.step == 2:
         if st.button(L['next']):
             time_val = st.session_state.p_time.strip()
             if time_val and st.session_state.s_type != L['select_op'] and st.session_state.s_region != L['select_op'] and st.session_state.s_model != L['select_op']:
-                st.session_state.p_time_val = time_val
-                st.session_state.s_type_val = st.session_state.s_type
-                st.session_state.s_model_val = st.session_state.s_model
-                st.session_state.s_region_val = st.session_state.s_region
-                st.session_state.s_district_val = st.session_state.get('s_district', '')
-                st.session_state.seat_count_val = st.session_state.seat_count
-                st.session_state.mg_selected_val = st.session_state.get('mg_selected', False)
-                st.session_state.s_date_val = st.session_state.s_date_widget
-                st.session_state.step = 3
-                st.rerun()
+                # 準備 payload
+                payload = {
+                    "action": "init_booking",
+                    "name": st.session_state.u_name_val,
+                    "phone": st.session_state.u_phone_full,
+                    "email": st.session_state.u_email_val,
+                    "social": ", ".join(st.session_state.u_social_val),
+                    "date": str(st.session_state.s_date_widget),
+                    "time": time_val,
+                    "type": st.session_state.s_type,
+                    "model": st.session_state.s_model,
+                    "region": st.session_state.s_region,
+                    "district": st.session_state.get('s_district', '')
+                }
+                
+                try:
+                    response = requests.post(GOOGLE_SCRIPT_URL, data=json.dumps(payload))
+                    if response.status_code == 200:
+                        result = response.json()
+                        st.session_state.record_id = result.get('id')
+                        
+                        # 保存資料至 session
+                        st.session_state.p_time_val = time_val
+                        st.session_state.s_type_val = st.session_state.s_type
+                        st.session_state.s_model_val = st.session_state.s_model
+                        st.session_state.s_region_val = st.session_state.s_region
+                        st.session_state.s_district_val = st.session_state.get('s_district', '')
+                        st.session_state.seat_count_val = st.session_state.seat_count
+                        st.session_state.mg_selected_val = st.session_state.get('mg_selected', False)
+                        st.session_state.s_date_val = st.session_state.s_date_widget
+                        
+                        st.session_state.step = 3
+                        st.rerun()
+                    else:
+                        st.error("系統繁忙，請稍後再試。")
+                except:
+                    st.error("連線錯誤")
             else:
                 st.warning(L['fill_all'])
 
@@ -343,23 +370,14 @@ elif st.session_state.step == 3:
         if night_fee > 0:
             st.warning(L['night_warning'])
             
-        # --- 新增送出功能 ---
+        # --- 送出確認 ---
         if st.button(L['submit']):
             payload = {
-                "name": st.session_state.u_name_val,
-                "phone": st.session_state.u_phone_full,
-                "email": st.session_state.u_email_val,
-                "social": ", ".join(st.session_state.u_social_val),
-                "date": str(st.session_state.s_date_val),
-                "time": st.session_state.p_time_val,
-                "route": route,
-                "seat": st.session_state.seat_count_val,
-                "mg": "Yes" if st.session_state.mg_selected_val else "No",
-                "model": st.session_state.s_model_val,
-                "district": st.session_state.s_district_val,
-                "total": total_price
+                "action": "confirm_booking",
+                "record_id": st.session_state.get('record_id', ''),
+                "total": total_price,
+                "status": "已預約"
             }
-            
             try:
                 response = requests.post(GOOGLE_SCRIPT_URL, data=json.dumps(payload))
                 if response.status_code == 200:
